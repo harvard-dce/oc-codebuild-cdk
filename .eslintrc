@@ -1,0 +1,90 @@
+{
+  "extends": "airbnb",
+  "env": {
+    "browser": true,
+    "node": true
+  },
+  "plugins": [
+    "cdk"
+  ],
+  "rules": {
+    "max-classes-per-file": 0,
+    "class-methods-use-this": 0,
+    "no-console": 0,
+    "arrow-body-style": [
+      "warn",
+      "always"
+    ],
+    "arrow-parens": [
+      "warn",
+      "always"
+    ],
+    "comma-dangle": [
+      "error",
+      {
+        "arrays": "always-multiline",
+        "objects": "always-multiline",
+        "imports": "always-multiline",
+        "exports": "always-multiline",
+        "functions": "never"
+      }
+    ],
+    "consistent-return": "off",
+    "id-length": "off",
+    "no-continue": "off",
+    "function-call-argument-newline": [
+      "error",
+      "consistent"
+    ],
+    "max-len": [
+      "error",
+      {
+        "code": 80,
+        "ignoreStrings": true,
+        "ignoreTemplateLiterals": true,
+        "ignoreUrls": true
+      }
+    ],
+    "newline-per-chained-call": [
+      "error",
+      {
+        "ignoreChainWithDepth": 2
+      }
+    ],
+    "no-plusplus": [
+      "warn",
+      {
+        "allowForLoopAfterthoughts": true
+      }
+    ],
+    "prefer-template": "off",
+    "prefer-destructuring": [
+      "error",
+      {
+        "VariableDeclarator": {
+          "array": false,
+          "object": true
+        },
+        "AssignmentExpression": {
+          "array": false,
+          "object": true
+        }
+      },
+      {
+        "enforceForRenamedProperties": false
+      }
+    ],
+    "radix": "off",
+    "react/prefer-stateless-function": "off",
+    "react/jsx-filename-extension": "off",
+    "no-underscore-dangle": "off",
+    "no-await-in-loop": "off",
+    "max-params": [
+      "warn",
+      {
+        "max": 3
+      }
+    ],
+    "no-unused-expressions": "off"
+  }
+}
