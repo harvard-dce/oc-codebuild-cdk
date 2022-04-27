@@ -54,6 +54,9 @@ export class OpencastCodebuild extends cdk.Stack {
               "runtime-versions": {
                 "java": "corretto8"
               },
+              "commands": [
+                "printenv",
+              ],
             },
             "build": {
               "on-failure": "ABORT",
@@ -141,6 +144,7 @@ export class OpencastCodebuild extends cdk.Stack {
                 "java": "corretto8"
               },
               "commands": [
+                "printenv",
                 "# ffmpeg is needed by some of the tests",
                 "wget --no-verbose -O /opt/ffmpeg.tgz https://s3.amazonaws.com/mh-opsworks-shared-assets/ffmpeg-4.4.1-amazon-linux-static.tgz && /bin/tar -C /opt -xzf /opt/ffmpeg.tgz"
               ],
