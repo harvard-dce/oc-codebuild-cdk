@@ -30,6 +30,7 @@
     "@aws-cdk/aws-logs": "^1.154.0",
     "@aws-cdk/aws-s3": "^1.154.0",
     "@aws-cdk/core": "^1.154.0",
+    "@aws-sdk/client-ssm": "^3.81.0",
     "@types/node": "^17.0.22",
     "aws-cdk": "1.154.0",
     "source-map-support": "^0.5.21",
