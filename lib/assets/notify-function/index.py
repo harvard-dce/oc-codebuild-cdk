@@ -2,6 +2,7 @@ import json
 import boto3
 import urllib3
 from os import getenv
+from time import sleep
 
 import logging
 
@@ -19,19 +20,31 @@ RED = "#e62727"
 
 
 def handler(event, context):
-    logger.info(event)
+    logger.info(json.dumps(event))
 
     build_url = event["build_url"]
     build_id = event["build_id"]
     build_project = build_id.split(":")[0]
     trigger_branch_or_tag = event["trigger_branch_or_tag"]
 
+    tries = 1
     build_complete = False
-    while not build_complete:
-        build_details = codebuild.batch_get_builds(ids=[build_id])
-        build_complete = build_details["builds"][0]["buildComplete"]
+    build_detail = None
+    while not build_complete and tries <= 3:
+        logger.info(f"sleeping for {tries * 10} seconds")
+        sleep(tries * 10)
+        resp = codebuild.batch_get_builds(ids=[build_id])
+        build_detail = resp["builds"][0]
+        build_complete = build_detail["buildComplete"]
+        logger.info(f"try {tries}, build complete: {build_complete}")
+        tries += 1
 
-    build_status = build_details["builds"][0]["buildStatus"]
+    if not build_complete:
+        raise Exception(
+            f"Giving up fetching completed build details: {json.dumps(build_detail)}",
+        )
+
+    build_status = build_detail["buildStatus"]
     status_color = build_status == "SUCCEEDED" and GREEN or RED
 
     build_link = f"<{build_url}|{build_project}@{trigger_branch_or_tag}>"
@@ -57,6 +70,6 @@ def handler(event, context):
             Subject=f"[codebuild] {build_project} build {build_status}!",
             Message=msg,
         )
-        logger.debug(f"message published: {resp}")
+        logger.info(f"message published: {json.dumps(resp)}")
     except Exception as e:
         logger.error(f"Error sending to sns: {e}")
