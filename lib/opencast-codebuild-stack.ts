@@ -8,9 +8,13 @@ import * as sns from '@aws-cdk/aws-sns';
 import * as ssm from '@aws-cdk/aws-ssm';
 import { Duration } from '@aws-cdk/core';
 import * as path from 'path';
+import { BuildEnvironmentVariable, IArtifacts } from '@aws-cdk/aws-codebuild';
+import opencastBuildBuildspec from './buildspecs/opencast-build';
+import opencastTestRunnerBuildspec from './buildspecs/opencast-test-runner';
+import opencastCookbookBuildspec from './buildspecs/opencast-cookbook';
 
 export interface OpencastCodebuildProps extends cdk.StackProps {
-  slackNotifyUrl: string,
+  slackNotifyUrls: { [key: string]: string },
   artifactBucketName: string,
   cdkStackName: string;
 }
@@ -20,7 +24,7 @@ export class OpencastCodebuild extends cdk.Stack {
     super(scope, id, props);
 
     const {
-      slackNotifyUrl,
+      slackNotifyUrls,
       artifactBucketName,
       cdkStackName,
     } = props;
@@ -38,9 +42,18 @@ export class OpencastCodebuild extends cdk.Stack {
       timeout: Duration.seconds(60),
       code: lambda.Code.fromAsset(`${path.resolve(__dirname)}/assets/notify-function`),
       environment: {
-        SLACK_NOTIFY_URL: slackNotifyUrl,
+        SLACK_NOTIFY_URLS: JSON.stringify(slackNotifyUrls),
         SNS_TOPIC_ARN: topic.topicArn,
-      }
+      },
+      initialPolicy: [
+        new iam.PolicyStatement({
+          actions: ['sns:Publish'],
+          effect: iam.Effect.ALLOW,
+          resources: [
+            topic.topicArn,
+          ],
+        })
+      ]
     });
 
     topic.grantPublish(notifyFunction);
@@ -51,102 +64,51 @@ export class OpencastCodebuild extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    const computeEnvironment: codebuild.BuildEnvironment = {
+      computeType: codebuild.ComputeType.LARGE,
+      buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2,
+    };
+
+    const environmentVariables = {
+      NOTIFY_FUNCTION: { value: notifyFunction.functionArn },
+    }
+
+    const artifacts: codebuild.IArtifacts = codebuild.Artifacts.s3({
+      bucket: buildBucket,
+      includeBuildId: false,
+      packageZip: false,
+    });
+
+    // this depends on the oauth connection to bitbucket being established already; done via web console
+    const opencastSource = {
+      webhook: true,
+      owner: 'hudcede',
+      repo: 'matterhorn-dce-fork',
+    };
+
+    const cookbookSource = {
+      webhook: true,
+      owner: 'harvard-dce',
+      repo: 'mh-opsworks-recipes',
+    };
+
     const buildProject = new codebuild.Project(this, 'BuildProject', {
       projectName: `${cdkStackName}-build`,
-      // this depends on the oauth connection to bitbucket being established already; done via web console
-      source: codebuild.Source.bitBucket({
-        webhook: true,
-        identifier: 'opencast_build',
-        owner: 'hudcede',
-        repo: 'matterhorn-dce-fork',
-        webhookFilters: [
-          codebuild.FilterGroup.inEventOf(codebuild.EventAction.PUSH),
-        ],
-      }),
-      environment: {
-        computeType: codebuild.ComputeType.LARGE,
-        buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2,
-      },
-      environmentVariables: {
-        NOTIFY_FUNCTION: { value: notifyFunction.functionArn },
-      },
+      buildSpec: opencastBuildBuildspec,
+      artifacts,
+      environmentVariables,
+      environment: computeEnvironment,
       cache: codebuild.Cache.bucket(
         buildBucket,
         { prefix: '.build-cache' }
       ),
-      artifacts: codebuild.Artifacts.s3({
-        bucket: buildBucket,
-        includeBuildId: false,
-        packageZip: false,
+      source: codebuild.Source.bitBucket({
+        ...opencastSource,
+        identifier: 'opencast_build',
+        webhookFilters: [
+          codebuild.FilterGroup.inEventOf(codebuild.EventAction.PUSH),
+        ],
       }),
-      buildSpec: codebuild.BuildSpec.fromObjectToYaml(
-        {
-          "version": 0.2,
-          "env": {
-            "shell": "bash",
-            "variables": {
-              "_COMMENT": "default is to build without tests",
-              "SKIP_TESTS": "-DskipTests -Dcheckstyle.skip=true",
-            },
-          },
-          "phases": {
-            "install": {
-              "runtime-versions": {
-                "java": "corretto8",
-              },
-              "commands": [
-                "printenv",
-              ],
-            },
-            "build": {
-              "commands": [
-                "echo Build started on `date`",
-                "echo aws cli version `aws --version`",
-                "# webhook triggered runs will have CODEBUILD_WEBHOOK_TRIGGER, e.g. `tag/[tag name]`, `branch/[branch name]` or `pr/[pr number]`",
-                "# branch/tag runs will have CODEBUILD_WEBHOOK_HEAD_REF, e.g. `refs/heads/[branch|tag name]`",
-                "# manually triggered runs will only have CODEBUILD_SOURCE_VERSION",
-                "# get the tag or branch name to use as the s3 object path",
-                "TRIGGER_BRANCH_OR_TAG=$CODEBUILD_WEBHOOK_TRIGGER",
-                "if [ -z \"$TRIGGER_BRANCH_OR_TAG\" ]; then TRIGGER_BRANCH_OR_TAG=\"manual/${CODEBUILD_SOURCE_VERSION}\"; fi",
-                "# - at this point TRIGGER_BRANCH_OR_TAG should look like `branch/[branch name]`, `tag/[tag name]`, or `manual/[branch or tag]`",
-                "# - `cut` with `-f2-` will cut off the leading token (i.e. `branch/` or `tag/`) leaving other `/` characters intact",
-                "# - `sed` will replace any remaning `/` with `-`",
-                "export TRIGGER_BRANCH_OR_TAG=$(echo $TRIGGER_BRANCH_OR_TAG | cut -d'/' -f2- | sed -e 's/\\//-/g')",
-                "# release tag examles: DCE/5.0.0-1.8.0, DCE/5.0.0-1.8.0-rc1, DCE/5.0.0-1.8.0-hotfix",
-                "if [[ $TRIGGER_BRANCH_OR_TAG =~ ^DCE-[0-9\\.\\-]+(-hotfix|-rc[0-9])?$ ]] ; then SKIP_TESTS=\"\" ; fi",
-                "echo test options '$SKIP_TESTS'",
-                "# run the maven command",
-                "mvn -Dmaven.repo.local=/opt/.m2/repository clean install $SKIP_TESTS -Padmin,presentation,worker",
-              ],
-            },
-            "post_build": {
-              "commands": [
-                "if [[ $CODEBUILD_BUILD_SUCCEEDING != 0 ]]; then exit 255 ; else echo Build completed on `date` ; fi",
-                "tar -C ./build/opencast-dist-admin-5-SNAPSHOT -czf ./build/admin.tgz .",
-                "tar -C ./build/opencast-dist-presentation-5-SNAPSHOT -czf ./build/presentation.tgz .",
-                "tar -C ./build/opencast-dist-worker-5-SNAPSHOT -czf ./build/worker.tgz ."
-              ],
-              "finally": [
-                "payload={\\\"build_id\\\":\\\"$CODEBUILD_BUILD_ID\\\",\\\"build_url\\\":\\\"$CODEBUILD_BUILD_URL\\\",\\\"trigger_branch_or_tag\\\":\\\"$TRIGGER_BRANCH_OR_TAG\\\"}",
-                "aws lambda invoke --function-name $NOTIFY_FUNCTION --payload $payload response.json",
-                "cat response.json",
-              ],
-            },
-          },
-          "cache": {
-            "paths": [
-              "/opt/.m2/",
-            ],
-          },
-          "artifacts": {
-            "discard-paths": true,
-            "files": [
-              "build/*.tgz",
-            ],
-            "name": "$TRIGGER_BRANCH_OR_TAG",
-          },
-        }
-      ),
       logging: {
         cloudWatch: {
           logGroup,
@@ -155,13 +117,18 @@ export class OpencastCodebuild extends cdk.Stack {
       },
     });
 
-    const testsProject = new codebuild.Project(this, 'TestRunnerProject', {
+    const testRunnerProject = new codebuild.Project(this, 'TestRunnerProject', {
       projectName: `${cdkStackName}-test-runner`,
+      buildSpec: opencastTestRunnerBuildspec,
+      cache: codebuild.Cache.bucket(
+        buildBucket,
+        { prefix: '.test-runner-cache' }
+      ),
+      environmentVariables,
+      environment: computeEnvironment,
       source: codebuild.Source.bitBucket({
-        webhook: true,
+        ...opencastSource,
         identifier: 'opencast_test_runner',
-        owner: 'hudcede',
-        repo: 'matterhorn-dce-fork',
         webhookFilters: [
           codebuild.FilterGroup
             .inEventOf(
@@ -171,53 +138,6 @@ export class OpencastCodebuild extends cdk.Stack {
             ),
         ],
       }),
-      environment: {
-        computeType: codebuild.ComputeType.LARGE,
-        buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2,
-      },
-      cache: codebuild.Cache.bucket(
-        buildBucket,
-        { prefix: '.test-runner-cache' },
-      ),
-      buildSpec: codebuild.BuildSpec.fromObjectToYaml(
-        {
-          "version": 0.2,
-          "env": {
-            "shell": "bash",
-          },
-          "phases": {
-            "install": {
-              "runtime-versions": {
-                "java": "corretto8"
-              },
-              "commands": [
-                "printenv",
-                "# ffmpeg is needed by some of the tests",
-                "wget --no-verbose -O /opt/ffmpeg.tgz https://s3.amazonaws.com/mh-opsworks-shared-assets/ffmpeg-4.4.1-amazon-linux-static.tgz && /bin/tar -C /opt -xzf /opt/ffmpeg.tgz"
-              ],
-            },
-            "build": {
-              "on-failure": "ABORT",
-              "commands": [
-                "echo Build started on `date`",
-                "export PATH=\"/opt/ffmpeg-4.4.1:${PATH}\"",
-
-                "# set the timezone so dates generated during tests can match the expected output",
-                "export TZ=US/Eastern",
-
-                "# run the maven command",
-                "mvn -Dmaven.repo.local=/opt/.m2/repository test -Pnone"
-              ],
-            },
-          },
-          "cache": {
-            "paths": [
-              "build/",
-              "/opt/.m2/",
-            ],
-          },
-        },
-      ),
       logging: {
         cloudWatch: {
           logGroup,
@@ -226,9 +146,25 @@ export class OpencastCodebuild extends cdk.Stack {
       },
     });
 
-    // allow both build projects to invoke the lambda
+    const cookbookProject = new codebuild.Project(this, 'CookbookProject', {
+      projectName: `${cdkStackName}-cookbook-build`,
+      buildSpec: opencastCookbookBuildspec,
+      artifacts,
+      environmentVariables,
+      environment: computeEnvironment,
+      source: codebuild.Source.gitHub({
+        ...cookbookSource,
+        identifier: 'opencast_cookbook',
+        webhookFilters: [
+          codebuild.FilterGroup.inEventOf(codebuild.EventAction.PUSH),
+        ],
+      })
+    })
+
+    // allow all build projects to invoke the lambda
     notifyFunction.grantInvoke(buildProject.role as iam.Role);
-    notifyFunction.grantInvoke(testsProject.role as iam.Role);
+    notifyFunction.grantInvoke(testRunnerProject.role as iam.Role);
+    notifyFunction.grantInvoke(cookbookProject.role as iam.Role);
 
     // allow the lambda to get info about the builds
     notifyFunction.role?.addManagedPolicy(

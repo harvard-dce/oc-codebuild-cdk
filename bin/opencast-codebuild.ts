@@ -45,14 +45,14 @@ async function main(): Promise<void> {
     console.log(config);
 
     const {
-      slackNotifyUrl,
+      slackNotifyUrls,
       artifactBucketName,
       cdkStackName,
     } = config;
 
     const app = new cdk.App();
     new OpencastCodebuild(app, cdkStackName, {
-      slackNotifyUrl,
+      slackNotifyUrls,
       artifactBucketName,
       cdkStackName,
       tags: {
