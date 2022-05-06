@@ -5,12 +5,8 @@ import * as s3 from '@aws-cdk/aws-s3';
 import * as iam from '@aws-cdk/aws-iam';
 import * as lambda from '@aws-cdk/aws-lambda';
 import * as sns from '@aws-cdk/aws-sns';
-import * as ssm from '@aws-cdk/aws-ssm';
 import { Duration } from '@aws-cdk/core';
 import * as path from 'path';
-import { BuildEnvironmentVariable, IArtifacts } from '@aws-cdk/aws-codebuild';
-import opencastBuildBuildspec from './buildspecs/opencast-build';
-import opencastTestRunnerBuildspec from './buildspecs/opencast-test-runner';
 import opencastCookbookBuildspec from './buildspecs/opencast-cookbook';
 
 export interface OpencastCodebuildProps extends cdk.StackProps {
@@ -94,7 +90,6 @@ export class OpencastCodebuild extends cdk.Stack {
 
     const buildProject = new codebuild.Project(this, 'BuildProject', {
       projectName: `${cdkStackName}-build`,
-      buildSpec: opencastBuildBuildspec,
       artifacts,
       environmentVariables,
       environment: computeEnvironment,
@@ -119,7 +114,7 @@ export class OpencastCodebuild extends cdk.Stack {
 
     const testRunnerProject = new codebuild.Project(this, 'TestRunnerProject', {
       projectName: `${cdkStackName}-test-runner`,
-      buildSpec: opencastTestRunnerBuildspec,
+      buildSpec: codebuild.BuildSpec.fromSourceFilename('buildspec-tests.yml'),
       cache: codebuild.Cache.bucket(
         buildBucket,
         { prefix: '.test-runner-cache' }
