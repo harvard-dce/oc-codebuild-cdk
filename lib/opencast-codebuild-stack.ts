@@ -7,7 +7,6 @@ import * as lambda from '@aws-cdk/aws-lambda';
 import * as sns from '@aws-cdk/aws-sns';
 import { Duration } from '@aws-cdk/core';
 import * as path from 'path';
-import opencastCookbookBuildspec from './buildspecs/opencast-cookbook';
 
 export interface OpencastCodebuildProps extends cdk.StackProps {
   slackNotifyUrls: { [key: string]: string },
@@ -73,6 +72,7 @@ export class OpencastCodebuild extends cdk.Stack {
       bucket: buildBucket,
       includeBuildId: false,
       packageZip: false,
+      encryption: false,
     });
 
     // this depends on the oauth connection to bitbucket being established already; done via web console
@@ -143,7 +143,6 @@ export class OpencastCodebuild extends cdk.Stack {
 
     const cookbookProject = new codebuild.Project(this, 'CookbookProject', {
       projectName: `${cdkStackName}-cookbook-build`,
-      buildSpec: opencastCookbookBuildspec,
       artifacts,
       environmentVariables,
       environment: computeEnvironment,
