@@ -1,14 +1,21 @@
-# Welcome to your CDK TypeScript project!
+# Opencast Codebuild w/ CDK!
 
-This is a blank project for TypeScript development with CDK.
+This project creates several AWS codebuild projects for pre-building parts of our Opencast Opsworks deployment. It uses TypeScript and the AWS CDK library to create and connect the majority of AWS resources.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+##### Things you will need
 
-## Useful commands
+* local git clone of this project
+* an existing S3 bucket
+* at least one AWS Parameter Store entry with a few configuration settings
+* the appropriate `buildspec.yml` files in their respective software projects
 
- * `npm run build`   compile typescript to js
- * `npm run watch`   watch for changes and compile
- * `npm run test`    perform the jest unit tests
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk synth`       emits the synthesized CloudFormation template
+##### What it creates
+
+* 3 Codebuild projects:
+    * 1 that builds Opencast profile packages (admin, worker, etc)
+    * 1 that only runs the Opencast tests
+    * 1 that builds the mh-opsworks-recipes custom chef cookbook
+* a CloudWatch log group where all the build logging output goes
+* a Lambda funciton and SNS topic for sending notifications
+* the IAM roles and policies necessary for the things to run
+
