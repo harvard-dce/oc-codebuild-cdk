@@ -1,12 +1,15 @@
-import * as cdk from '@aws-cdk/core';
-import * as codebuild from '@aws-cdk/aws-codebuild';
-import * as logs from '@aws-cdk/aws-logs';
-import * as s3 from '@aws-cdk/aws-s3';
-import * as iam from '@aws-cdk/aws-iam';
-import * as lambda from '@aws-cdk/aws-lambda';
-import * as sns from '@aws-cdk/aws-sns';
-import { Duration } from '@aws-cdk/core';
+import * as cdk from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+import {
+  aws_codebuild as codebuild,
+  aws_logs as logs,
+  aws_s3 as s3,
+  aws_iam as iam,
+  aws_lambda as lambda,
+  aws_sns as sns,
+} from 'aws-cdk-lib';
 import * as path from 'path';
+
 
 export interface OpencastCodebuildProps extends cdk.StackProps {
   slackNotifyUrls: { [key: string]: string },
@@ -15,7 +18,7 @@ export interface OpencastCodebuildProps extends cdk.StackProps {
 }
 
 export class OpencastCodebuild extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props: OpencastCodebuildProps) {
+  constructor(scope: Construct, id: string, props: OpencastCodebuildProps) {
     super(scope, id, props);
 
     const {
@@ -34,7 +37,7 @@ export class OpencastCodebuild extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_9,
       functionName: `${cdkStackName}-notify-function`,
       handler: 'index.handler',
-      timeout: Duration.seconds(60),
+      timeout: cdk.Duration.seconds(60),
       code: lambda.Code.fromAsset(`${path.resolve(__dirname)}/assets/notify-function`),
       environment: {
         SLACK_NOTIFY_URLS: JSON.stringify(slackNotifyUrls),
