@@ -64,7 +64,7 @@ export class OpencastCodebuild extends cdk.Stack {
 
     const computeEnvironment: codebuild.BuildEnvironment = {
       computeType: codebuild.ComputeType.LARGE,
-      buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2,
+      buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_5,
     };
 
     const environmentVariables = {
