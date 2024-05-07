@@ -7,6 +7,7 @@ import {
   aws_iam as iam,
   aws_lambda as lambda,
   aws_sns as sns,
+  aws_ecr as ecr,
 } from 'aws-cdk-lib';
 import * as path from 'path';
 
@@ -63,8 +64,11 @@ export class OpencastCodebuild extends cdk.Stack {
     });
 
     const computeEnvironment: codebuild.BuildEnvironment = {
-      computeType: codebuild.ComputeType.LARGE,
-      buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_5,
+      computeType: codebuild.ComputeType.X_LARGE,
+      buildImage: codebuild.LinuxBuildImage.fromEcrRepository(
+        ecr.Repository.fromRepositoryName(this, 'EcrRepository', 'hdce/oc-codebuild-environment'),
+        '1.0.0',
+      ),
     };
 
     const environmentVariables = {
