@@ -64,7 +64,7 @@ export class OpencastCodebuild extends cdk.Stack {
     });
 
     const computeEnvironment: codebuild.BuildEnvironment = {
-      computeType: codebuild.ComputeType.X_LARGE,
+      computeType: codebuild.ComputeType.LARGE,
       buildImage: codebuild.LinuxBuildImage.fromEcrRepository(
         ecr.Repository.fromRepositoryName(this, 'EcrRepository', 'hdce/oc-codebuild-environment'),
         '1.0.0',
@@ -152,7 +152,10 @@ export class OpencastCodebuild extends cdk.Stack {
       projectName: `${cdkStackName}-cookbook-build`,
       artifacts,
       environmentVariables,
-      environment: computeEnvironment,
+      environment: {
+        computeType: codebuild.ComputeType.LARGE,
+        buildImage: codebuild.LinuxBuildImage.STANDARD_5_0,
+      },
       source: codebuild.Source.gitHub({
         ...cookbookSource,
         identifier: 'opencast_cookbook',
