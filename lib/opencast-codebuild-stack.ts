@@ -67,7 +67,7 @@ export class OpencastCodebuild extends cdk.Stack {
       computeType: codebuild.ComputeType.LARGE,
       buildImage: codebuild.LinuxBuildImage.fromEcrRepository(
         ecr.Repository.fromRepositoryName(this, 'EcrRepository', 'hdce/oc-codebuild-environment'),
-        '1.0.0',
+        '1.0.1',
       ),
     };
 

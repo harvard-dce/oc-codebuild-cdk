@@ -1,4 +1,4 @@
-FROM ubuntu as builder
+FROM ubuntu AS builder
 
 RUN apt-get update \
     && apt-get install -y unzip curl
@@ -26,5 +26,5 @@ RUN apt update \
     && apt-get clean
 
 COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
-RUN ln -s /usr/local/aws-cli/v2/2.15.45/dist/aws /usr/local/bin/aws \
-    && ln -s /usr/local/aws-cli//v2/2.15.45/dist/aws_completer /usr/local/bin/aws_completer
+RUN ln -s /usr/local/aws-cli/v2/current/dist/aws /usr/local/bin/aws \
+    && ln -s /usr/local/aws-cli/v2/current/dist/aws_completer /usr/local/bin/aws_completer
