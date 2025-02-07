@@ -31,7 +31,13 @@ def handler(event, context):
     build_url = event["build_url"]
     build_id = event["build_id"]
     build_project = build_id.split(":")[0]
+    # This is the opencast branch or tag
     trigger_branch_or_tag = event["trigger_branch_or_tag"]
+    # Optional. This is the opencast-ecs-images branch or tag
+    if "image_branch_or_tag" in event:
+        trigger_branch_or_tag = (
+            f"{trigger_branch_or_tag} {event['image_branch_or_tag']}"
+        )
 
     slack_notify_urls = json.loads(SLACK_NOTIFY_URLS)
     if build_project not in slack_notify_urls:

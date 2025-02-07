@@ -1,6 +1,6 @@
 # Opencast Codebuild w/ CDK!
 
-This project creates several AWS codebuild projects for pre-building parts of our Opencast Opsworks deployment. It uses TypeScript and the AWS CDK library to create and connect the majority of AWS resources.
+This project creates several AWS codebuild projects for pre-building parts of our Opencast ECS deployment. It uses TypeScript and the AWS CDK library to create and connect the majority of AWS resources.
 
 ##### Things you will need
 
@@ -13,10 +13,9 @@ This project creates several AWS codebuild projects for pre-building parts of ou
 
 ##### What it creates
 
-* 3 Codebuild projects:
-    * 1 that builds Opencast profile packages (admin, worker, etc)
+* 2 Codebuild projects:
+    * 1 that builds the Opencast docker images and pushes them to ECR (admin, worker, etc)
     * 1 that only runs the Opencast tests
-    * 1 that builds the mh-opsworks-recipes custom chef cookbook
 * a CloudWatch log group where all the build logging output goes
 * a Lambda funciton and SNS topic for sending notifications
 * the IAM roles and policies necessary for the things to run
@@ -36,6 +35,7 @@ This project creates several AWS codebuild projects for pre-building parts of ou
         "OpencastCodebuild-cookbook-build": "https://hooks.slack.com/services/..."
       },
       "artifactBucketName": "opencast-codebuild-artifacts",
+      "testRunnerImageVersion": "2.0.0",
       "cdkStackName": "OpencastCodebuild"
     }
    ```
@@ -45,37 +45,32 @@ This project creates several AWS codebuild projects for pre-building parts of ou
    configuration.
 1. Run `OPENCAST_CODEBUILD_ENVIRONMENT=foo ./node_modules/.bin/cdk deploy` to create the
    AWS resources
-1. The slack URLs are enough to begin recieving notifications in whatever channel the URLs
+1. The slack URLs are enough to begin receiving notifications in whatever channel the URLs
    are created for, but to complete the SNS notification setup you must manually subscribe
    and confirm one or more endpoints via the SNS service. The SNS topic name will be
    "${cdkStackName}-notifications".
 
 ### Codebuild Projects
 
-The deploy operation will create three Codebuild projects named according to your
+The deploy operation will create two Codebuild projects named according to your
 `cdkStackName` value.
 
-- ${cdkStackName}-build
+- ${cdkStackName}-image-build
 - ${cdkStackName}-test-runner
-- ${cdkStackName}-cookbook-build
 
-##### build
+##### image-build
 
-This project will build the three Opencast profiles: admin, presentation (engage), and worker,
-and place the resulting tar-gzipped artifacts in the artifact bucket with object keys matching
-the git branch or tag that triggered the build. It is triggered by any git push to the repo and
-relies on the `buildspec.yml` in the root directory of the Opencast project. By default tests
-are skipped, unless trigger looks like a release tag.
+This project will invoke the `buildspec.yml` in the root directory of the 
+[opencast-ecs-images](https://github.com/harvard-dce/opencast-ecs-images) repo,
+which uses the `Makefile` to build the three Opencast docker images: admin, engage, and worker,
+and publish them to AWS ECR `hdce/opencast`.
+The images are tagged using the opencast-ecs-images repo branch and
+the Opencast repo branch.
+This build is not triggered by pull requests; it is run via script in `opencast-ecs-images`.
 
-Example s3 object produced: `${artifactBucketName}/opencast/branch-or-tag-name/admin.tgz`
+Tag examples: `main_develop-15.x`, `release-2.0.0_15.5.0-2.1.0`
 
 ##### test-runner
 
 Runs the Opencast tests. No artifacts are produced. Triggered by pull request creation/updates. Relies
-on the `buildspec-tests.yml` file in the Opencast project. Only triggered by pull request actions.
-
-##### cookbook-build
-
-Packages the mh-opsworks-recipes custom cookbook and puts the result in the artifact bucket. Relies on
-the `buildspec.yml` definition in the source. Triggered by any push to the repo.  Example s3 object 
-produced: `${artifactBucketName}/cookbook/branch-or-tag-name/mh-opsworks-recipes-branch-or-tag-name.tar.gz`
+on the `buildspec-tests.yml` file in the [Opencast](https://bitbucket.org/hudcede/matterhorn-dce-fork) project. Only triggered by pull request actions.
