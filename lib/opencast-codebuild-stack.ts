@@ -86,8 +86,8 @@ export class OpencastCodebuild extends cdk.Stack {
       projectName: `${cdkStackName}-image-build`,
       environmentVariables: {
         ...environmentVariables,
-        IMAGE_REGISTRY: {
-          value: `${cdk.Stack.of(this).account}.dkr.ecr.us-east-1.amazonaws.com/hdce`,
+        AWS_ACCOUNT_ID: {
+          value: `${cdk.Stack.of(this).account}`,
           type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
         },
         OPENCAST_REPO: {
