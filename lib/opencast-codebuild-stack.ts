@@ -16,6 +16,7 @@ export interface OpencastCodebuildProps extends cdk.StackProps {
   slackNotifyUrls: { [key: string]: string },
   artifactBucketName: string,
   cdkStackName: string;
+  testRunnerImageVersion: string;
 }
 
 export class OpencastCodebuild extends cdk.Stack {
@@ -26,6 +27,7 @@ export class OpencastCodebuild extends cdk.Stack {
       slackNotifyUrls,
       artifactBucketName,
       cdkStackName,
+      testRunnerImageVersion,
     } = props;
 
     const buildBucket = s3.Bucket.fromBucketName(this, 'BuildBucket', artifactBucketName);
@@ -157,7 +159,7 @@ export class OpencastCodebuild extends cdk.Stack {
             this,
             'EcrRepository',
             'hdce/oc-codebuild-environment'),
-            '2.0.0',
+            testRunnerImageVersion,
         ),
       },
       source: codebuild.Source.bitBucket({

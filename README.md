@@ -35,6 +35,7 @@ This project creates several AWS codebuild projects for pre-building parts of ou
         "OpencastCodebuild-cookbook-build": "https://hooks.slack.com/services/..."
       },
       "artifactBucketName": "opencast-codebuild-artifacts",
+      "testRunnerImageVersion": "2.0.0",
       "cdkStackName": "OpencastCodebuild"
     }
    ```

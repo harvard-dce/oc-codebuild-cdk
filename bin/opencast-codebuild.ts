@@ -48,6 +48,7 @@ async function main(): Promise<void> {
       slackNotifyUrls,
       artifactBucketName,
       cdkStackName,
+      testRunnerImageVersion,
     } = config;
 
     const app = new cdk.App();
@@ -55,6 +56,7 @@ async function main(): Promise<void> {
       slackNotifyUrls,
       artifactBucketName,
       cdkStackName,
+      testRunnerImageVersion,
       tags: {
         project: 'MH',
         department: 'DE',
