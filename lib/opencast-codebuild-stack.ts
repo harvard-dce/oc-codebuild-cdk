@@ -1,14 +1,14 @@
 import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
 import {
   aws_codebuild as codebuild,
-  aws_logs as logs,
-  aws_s3 as s3,
+  aws_ecr as ecr,
   aws_iam as iam,
   aws_lambda as lambda,
+  aws_logs as logs,
+  aws_s3 as s3,
   aws_sns as sns,
-  aws_ecr as ecr,
 } from 'aws-cdk-lib';
+import { Construct } from 'constructs';
 import * as path from 'path';
 
 
@@ -69,9 +69,8 @@ export class OpencastCodebuild extends cdk.Stack {
       NOTIFY_FUNCTION: { value: notifyFunction.functionArn },
     }
 
-    // this depends on the oauth connection to bitbucket being established already; done via web console
     const opencastSource = {
-      owner: 'hudcede',
+      owner: 'harvard-dce',
       repo: 'matterhorn-dce-fork',
       cloneDepth: 1,
       report: false,
@@ -93,7 +92,7 @@ export class OpencastCodebuild extends cdk.Stack {
           type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
         },
         OPENCAST_REPO: {
-          value: '/CodeBuild/bitbucket/matterhorn-dce-fork',
+          value: '/CodeBuild/github/matterhorn-dce-fork',
           type: codebuild.BuildEnvironmentVariableType.SECRETS_MANAGER,
         }
       },
@@ -110,7 +109,7 @@ export class OpencastCodebuild extends cdk.Stack {
         ...imageSource,
       }),
       secondarySources: [
-        codebuild.Source.bitBucket({
+        codebuild.Source.gitHub({
           ...opencastSource,
           identifier: 'opencast',
         })
@@ -162,7 +161,7 @@ export class OpencastCodebuild extends cdk.Stack {
             testRunnerImageVersion,
         ),
       },
-      source: codebuild.Source.bitBucket({
+      source: codebuild.Source.gitHub({
         ...opencastSource,
         webhook: true,
         identifier: 'opencast_test_runner',
