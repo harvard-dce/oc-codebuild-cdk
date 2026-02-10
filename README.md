@@ -6,9 +6,9 @@ This project creates several AWS codebuild projects for pre-building parts of ou
 
 * local git clone of this project
 * an existing S3 bucket
-* an Oauth connection to BitBucket and GitHub configured in your [AWS Codebuild settings](https://us-east-1.console.aws.amazon.com/codesuite/settings/connections):
 * at least one AWS Parameter Store entry with a few configuration settings
-* the appropriate `buildspec.yml` files in their respective software projects
+* the appropriate `buildspec.yml` file in the opencast-ecs-images project
+* the appropriate `buildspec-test.yml` file in the matterhorn-dce-fork project
 * One or more Slack webhook urls for posting notifications
 
 ##### What it creates
@@ -60,7 +60,7 @@ The deploy operation will create two Codebuild projects named according to your
 
 ##### image-build
 
-This project will invoke the `buildspec.yml` in the root directory of the 
+This project will invoke the `buildspec.yml` in the root directory of the
 [opencast-ecs-images](https://github.com/harvard-dce/opencast-ecs-images) repo,
 which uses the `Makefile` to build the three Opencast docker images: admin, engage, and worker,
 and publish them to AWS ECR `hdce/opencast`.
@@ -73,4 +73,4 @@ Tag examples: `main_develop-15.x`, `release-2.0.0_15.5.0-2.1.0`
 ##### test-runner
 
 Runs the Opencast tests. No artifacts are produced. Triggered by pull request creation/updates. Relies
-on the `buildspec-tests.yml` file in the [Opencast](https://bitbucket.org/hudcede/matterhorn-dce-fork) project. Only triggered by pull request actions.
+on the `buildspec-tests.yml` file in the [Opencast](https://github.com/harvard-dce/matterhorn-dce-fork) project. Only triggered by pull request actions.
