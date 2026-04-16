@@ -91,8 +91,8 @@ export class OpencastCodebuild extends cdk.Stack {
           value: `${cdk.Stack.of(this).account}`,
           type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
         },
-        OPENCAST_REPO: {
-          value: '/CodeBuild/github/matterhorn-dce-fork',
+        OPENCAST_REPO_TOKEN: {
+          value: '/CodeBuild/github/matterhorn-dce-fork-token',
           type: codebuild.BuildEnvironmentVariableType.SECRETS_MANAGER,
         }
       },
@@ -163,6 +163,7 @@ export class OpencastCodebuild extends cdk.Stack {
       },
       source: codebuild.Source.gitHub({
         ...opencastSource,
+        fetchSubmodules: true,
         webhook: true,
         identifier: 'opencast_test_runner',
         webhookFilters: [
