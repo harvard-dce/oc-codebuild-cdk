@@ -141,6 +141,23 @@ export class OpencastCodebuild extends cdk.Stack {
       })
     );
 
+    // The statement above is push-only. Dockerfile-opencast-base now does
+    // `FROM <registry>/hdce/ffmpeg:<version>`, so the image build also has to *pull*,
+    // and without these actions that FROM fails at the _build_base step with a bare
+    // "403 Forbidden" -- ECR authorizes before it checks existence, so a missing
+    // permission and a missing image are indistinguishable from the error alone.
+    //
+    // Granted via grantPull rather than by adding the two actions above, so read access
+    // stays scoped to this one repository instead of inheriting that statement's '*'.
+    // The ffmpeg image itself is built and pushed out of band by the opencast-ecs-images
+    // project (`make build_and_push_ffmpeg`); this stack only consumes it.
+    const ffmpegRepository = ecr.Repository.fromRepositoryName(
+      this,
+      'FfmpegRepository',
+      'hdce/ffmpeg',
+    );
+    ffmpegRepository.grantPull(imageBuildRole);
+
     const testRunnerProject = new codebuild.Project(this, 'TestRunnerProject', {
       projectName: `${cdkStackName}-test-runner`,
       buildSpec: codebuild.BuildSpec.fromSourceFilename('buildspec-tests.yml'),

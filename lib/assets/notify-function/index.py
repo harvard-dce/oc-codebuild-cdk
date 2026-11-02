@@ -38,6 +38,11 @@ def handler(event, context):
         trigger_branch_or_tag = (
             f"{trigger_branch_or_tag} {event['image_branch_or_tag']}"
         )
+    # Optional. The tag the images were published under, from `make print_image_tag`.
+    # Must stay optional: the test-runner project uses buildspec-tests.yml, which does not
+    # build images and so sends no image_tag. Empty string is treated as absent too, since
+    # that is what the buildspec sends if the make call fails.
+    image_tag = event.get("image_tag") or None
 
     slack_notify_urls = json.loads(SLACK_NOTIFY_URLS)
     if build_project not in slack_notify_urls:
@@ -65,6 +70,8 @@ def handler(event, context):
 
     build_link = f"<{build_url}|{build_project}@{trigger_branch_or_tag}>"
     msg = f"Codebuild complete for {build_link}, status: {build_status}"
+    if image_tag:
+        msg += f"\nImage tag: {image_tag}"
     req_body = {"attachments": [{"color": status_color, "text": msg}]}
 
     logger.info("posting message: {}".format(msg))
@@ -81,11 +88,15 @@ def handler(event, context):
 
     try:
         build_details_dump = json.dumps(build_detail, indent=2, default=json_datetime_converter)
+        # Added to the body, not the Subject: SNS subjects are capped at 100 characters
+        # and the tag can be long enough to push it over.
+        image_tag_line = f"Image tag: {image_tag}\n" if image_tag else ""
         resp = sns.publish(
             TopicArn=SNS_TOPIC_ARN,
             Subject=f"[{build_project}] {trigger_branch_or_tag} build {build_status}!",
             Message=(
                 f"Status: {build_status}\nRevision: {trigger_branch_or_tag}\n"
+                f"{image_tag_line}"
                 f"Build: {build_link}\nDetails: {build_details_dump}"
             ),
         )
